@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>전개도 탐험대 3D — 5학년 2학기 직육면체</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+  :root{
+    --ink:#1e293b; --muted:#64748b; --line:#e2e8f0; --bg:#f1f5f9;
+    --accent:#2563eb; --accent2:#f59e0b; --ok:#16a34a; --bad:#dc2626; --purple:#7c3aed;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{height:100%;margin:0}
+  body{font-family:'Noto Sans KR',system-ui,sans-serif;background:var(--bg);color:var(--ink);overflow:hidden}
+  #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+  header{background:linear-gradient(120deg,#1e3a8a,#4f46e5 55%,#7c3aed);color:#fff;padding:10px 14px;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+  header h1{margin:0;font-size:19px;font-weight:900;letter-spacing:-.3px}
+  header p{margin:0;font-size:12px;opacity:.85}
+  nav{display:flex;gap:6px;padding:8px 10px;overflow-x:auto;background:#fff;border-bottom:1px solid var(--line);scrollbar-width:none}
+  nav::-webkit-scrollbar{display:none}
+  nav button{flex:1;min-width:84px;white-space:nowrap;border:2px solid var(--line);background:#fff;border-radius:12px;padding:9px 10px;font-size:13.5px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--muted)}
+  nav button.on{border-color:var(--accent);color:var(--accent);background:#eff6ff}
+  #main{flex:1;min-height:0;display:flex;flex-direction:column}
+  #viewerWrap{position:relative;flex:none;height:46vh;background:radial-gradient(ellipse at 50% 30%,#ffffff 0%,#dbeafe 55%,#c7d2fe 100%)}
+  #viewer{position:absolute;inset:0;touch-action:none;cursor:grab}
+  #viewer canvas{display:block;width:100%!important;height:100%!important;touch-action:none}
+  #confetti{position:absolute;inset:0;pointer-events:none}
+  #hud{position:absolute;left:10px;top:10px;max-width:70%;background:rgba(255,255,255,.85);backdrop-filter:blur(6px);border-radius:10px;padding:7px 10px;font-size:13px;font-weight:700;line-height:1.4;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.08);transition:opacity .3s}
+  #hud:empty{opacity:0}
+  #camBar{position:absolute;right:8px;top:8px;display:flex;flex-direction:column;gap:5px}
+  #camBar button{border:none;background:rgba(255,255,255,.9);border-radius:10px;padding:6px 9px;font-size:12px;font-weight:700;font-family:inherit;cursor:pointer;color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.12);white-space:nowrap}
+  #camBar button.on{background:var(--accent);color:#fff}
+  #foldBar{position:absolute;left:8px;right:8px;bottom:8px;display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.9);backdrop-filter:blur(6px);border-radius:14px;padding:8px 10px;box-shadow:0 2px 8px rgba(0,0,0,.1)}
+  #foldBar.hidden{display:none}
+  #foldBar input[type=range]{flex:1;min-width:60px;accent-color:var(--accent)}
+  #foldBar button{border:none;border-radius:10px;padding:7px 10px;font-size:13px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--accent);color:#fff;white-space:nowrap}
+  #foldBar button.sub{background:#e2e8f0;color:var(--ink)}
+  #foldBar button.sub.on{background:#fde68a}
+  #foldBar .lbl{font-size:12px;font-weight:700;color:var(--muted)}
+  #panel{flex:1;min-height:0;overflow-y:auto;padding:12px 12px 40px;-webkit-overflow-scrolling:touch}
+  .tab{display:none}.tab.on{display:block}
+  .card{background:#fff;border-radius:16px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.05)}
+  .card h2{margin:0 0 6px;font-size:17px;display:flex;align-items:center;gap:6px}
+  .hint{font-size:14px;color:var(--muted);margin:0 0 10px;line-height:1.55}
+  .tip{background:#fffbeb;border-left:4px solid var(--accent2);padding:10px 12px;border-radius:8px;font-size:14px;line-height:1.55;margin-top:10px}
+  .goal{background:#eef2ff;border-left:4px solid var(--purple);padding:8px 12px;border-radius:8px;font-size:13px;line-height:1.5;margin-bottom:10px;color:#3730a3}
+  .btn{border:none;border-radius:12px;padding:11px 16px;font-size:14.5px;font-weight:700;font-family:inherit;cursor:pointer;background:var(--accent);color:#fff}
+  .btn.sub{background:#e2e8f0;color:var(--ink)}.btn.sub.on{background:#dbeafe;color:var(--accent);outline:2px solid var(--accent)}
+  .btn.ok{background:var(--ok)}.btn.bad{background:var(--bad)}.btn.warn{background:var(--accent2)}.btn.purple{background:var(--purple)}
+  .btn:disabled{opacity:.45;cursor:default}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:10px 0}
+  .msg{padding:11px 13px;border-radius:10px;font-weight:700;font-size:14.5px;margin-top:10px;line-height:1.55}
+  .msg.ok{background:#dcfce7;color:#166534}.msg.bad{background:#fee2e2;color:#991b1b}.msg.info{background:#e0f2fe;color:#075985}
+  .msg span.n{font-weight:400}
+  /* picker */
+  .nets{display:grid;grid-template-columns:repeat(auto-fill,minmax(82px,1fr));gap:8px}
+  .netbtn{background:#fff;border:2px solid var(--line);border-radius:10px;padding:6px 4px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:11.5px;font-weight:700;color:var(--muted);font-family:inherit}
+  .netbtn.on{border-color:var(--accent);background:#eff6ff;color:var(--accent)}
+  .mini{display:grid;gap:1px}
+  .mini i{display:block;width:11px;height:11px;background:#e2e8f0;border-radius:2px}
+  .mini i.f{background:#60a5fa}
+  /* builder grid */
+  .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;max-width:340px;margin:0 auto}
+  .cell{aspect-ratio:1;background:#fff;border:2px dashed #cbd5e1;border-radius:8px;cursor:pointer;transition:transform .1s}
+  .cell:active{transform:scale(.92)}
+  .cell.f{background:#60a5fa;border:2px solid #2563eb}
+  .cell.dup{background:#f87171;border-color:#b91c1c}
+  .counter{text-align:center;font-weight:700;margin:6px 0 10px;font-size:15px}
+  /* dims */
+  .dims{display:flex;gap:10px;flex-wrap:wrap}
+  .dims label{flex:1;min-width:88px;font-size:13.5px;font-weight:700;color:var(--muted)}
+  .dims input{width:100%;font-size:18px;padding:8px;border:2px solid var(--line);border-radius:10px;font-family:inherit;margin-top:4px;color:var(--ink);font-weight:700}
+  table.t{width:100%;border-collapse:collapse;font-size:14px;margin-top:8px}
+  table.t td,table.t th{border:1px solid var(--line);padding:7px 6px;text-align:center}
+  table.t th{background:#f8fafc}
+  .sw{display:inline-block;width:14px;height:14px;border-radius:3px;border:1px solid #94a3b8;vertical-align:-2px;margin-right:4px}
+  /* quiz */
+  .score{display:flex;justify-content:space-between;font-weight:700;font-size:15px;margin-bottom:8px}
+  .qcanvas{display:flex;justify-content:center;padding:14px;background:#f8fafc;border:1px solid var(--line);border-radius:12px;margin-bottom:8px}
+  .qgrid{display:grid;gap:3px}
+  .qgrid i{display:block;width:38px;height:38px;border-radius:5px}
+  .qgrid i.f{background:#60a5fa;border:2px solid #2563eb}
+  .big{font-size:24px;padding:14px 0;flex:1}
+  .result{text-align:center}.result h3{font-size:26px;margin:6px 0}
+  .legend{display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin-top:8px}
+  .legend b{font-weight:700}
+  @media (min-width:900px){
+    #main{flex-direction:row}
+    #viewerWrap{height:auto;flex:0 0 58%}
+    #panel{flex:1}
+    header h1{font-size:22px}
+  }
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <h1>📦 전개도 탐험대 3D</h1>
+  <p>5학년 2학기 수학 5단원 「직육면체」 · 돌려 보고, 접어 보고, 찾아보기</p>
+</header>
+<nav id="tabs">
+  <button class="on" data-tab="t1">① 접어 보기</button>
+  <button data-tab="t2">② 직접 만들기</button>
+  <button data-tab="t3">③ 직육면체 전개도</button>
+  <button data-tab="t4">④ 성질·겨냥도</button>
+  <button data-tab="t5">⑤ 퀴즈</button>
+</nav>
+<div id="main">
+  <div id="viewerWrap">
+    <div id="viewer"></div>
+    <canvas id="confetti"></canvas>
+    <div id="hud"></div>
+    <div id="camBar">
+      <button data-cam="iso" class="on">🧊 비스듬히</button>
+      <button data-cam="top">⬇ 위에서</button>
+      <button data-cam="front">👀 앞에서</button>
+      <button data-cam="side">↔ 옆에서</button>
+      <button id="autoRot">🔄 자동 회전</button>
+    </div>
+    <div id="foldBar">
+      <span class="lbl">펼침</span>
+      <input type="range" id="fold" min="0" max="100" value="0">
+      <span class="lbl">접힘</span>
+      <button id="foldPlay">▶ 접기</button>
+      <button id="foldBack" class="sub">◀ 펼치기</button>
+      <button id="seqBtn" class="sub on" title="바깥 면부터 차례로 접기">순서대로</button>
+    </div>
+  </div>
+
+  <div id="panel">
+    <!-- ① -->
+    <section id="t1" class="tab on">
+      <div class="goal">🎯 정육면체의 전개도를 접어 보며, 마주 보는 면과 접었을 때 만나는 선분·꼭짓점을 찾아봅니다.</div>
+      <div class="card">
+        <h2>정육면체 전개도 11가지</h2>
+        <p class="hint">전개도를 고른 뒤 아래 <b>▶ 접기</b>를 누르거나 슬라이더를 밀어 보세요. 화면을 손가락으로 끌면 돌아가고, 두 손가락으로 확대할 수 있어요.</p>
+        <div class="nets" id="netPicker"></div>
+        <div class="legend"><span><i class="sw" style="background:#fca5a5"></i>마주 보는 면 1쌍</span><span><i class="sw" style="background:#93c5fd"></i>마주 보는 면 2쌍</span><span><i class="sw" style="background:#fde68a"></i>마주 보는 면 3쌍</span></div>
+      </div>
+      <div class="card">
+        <h2>🔍 만나는 선분·꼭짓점 찾기</h2>
+        <p class="hint">3D 화면에서 전개도의 <b>바깥쪽 변</b>을 톡 누르면, 접었을 때 그 변과 만나는 변이 함께 빛나고 자동으로 접혀요. <b>모서리(꼭짓점) 근처</b>를 누르면 한 꼭짓점으로 모이는 점들을 보여 줘요.</p>
+        <div class="row"><button class="btn sub" id="clearHL">표시 지우기</button></div>
+        <div id="m1"></div>
+      </div>
+      <div class="tip">💡 <b>같은 색 면은 마주 봅니다.</b> 정육면체의 면 6개는 3쌍이 서로 마주 보고, 전개도에서 마주 보는 면끼리는 절대 변끼리 붙어 있지 않아요. 11가지 전개도는 가운데 줄에 몇 칸이 있는지에 따라 1-4-1형(6개), 2-3-1형(3개), 2-2-2형(1개), 3-3형(1개)으로 나눌 수 있어요.</div>
+    </section>
+
+    <!-- ② -->
+    <section id="t2" class="tab">
+      <div class="goal">🎯 전개도를 스스로 만들어 보고, 정육면체가 되는지 접어서 확인합니다.</div>
+      <div class="card">
+        <h2>나만의 전개도 만들기</h2>
+        <p class="hint">칸을 눌러 색칠하세요. 정확히 <b>6칸</b>을 변끼리 붙여 칠한 뒤 <b>접어 보기</b>를 누르면 3D로 접혀요.</p>
+        <div class="counter" id="cnt">칠한 칸: 0 / 6</div>
+        <div class="grid" id="grid"></div>
+        <div class="row" style="justify-content:center">
+          <button class="btn ok" id="foldBtn">📦 접어 보기</button>
+          <button class="btn sub" id="clearBtn">지우기</button>
+          <button class="btn warn" id="hintBtn">💡 힌트</button>
+          <button class="btn purple" id="randBtn">🎲 랜덤</button>
+        </div>
+        <div id="m2"></div>
+      </div>
+      <div class="tip">💡 빨간 면은 접었을 때 <b>다른 면과 겹치는</b> 면이에요. 겹치는 면이 있으면 어느 한 면이 비어서 정육면체가 되지 않아요. 한 줄에 5칸 이상이거나, 2×2 네모가 들어 있으면 반드시 겹친답니다.</div>
+    </section>
+
+    <!-- ③ -->
+    <section id="t3" class="tab">
+      <div class="goal">🎯 직육면체의 전개도에서 마주 보는 면의 모양·크기가 같음을 확인하고, 접었을 때 만나는 선분의 길이가 같음을 알아봅니다.</div>
+      <div class="card">
+        <h2>직육면체 전개도</h2>
+        <p class="hint">가로·세로·높이를 바꿔 보세요. 전개도의 면 크기가 어떻게 달라지는지 살펴보고 접어 보세요.</p>
+        <div class="dims">
+          <label>가로 (cm)<input type="number" id="dX" min="1" max="6" value="4"></label>
+          <label>세로 (cm)<input type="number" id="dY" min="1" max="6" value="2"></label>
+          <label>높이 (cm)<input type="number" id="dZ" min="1" max="6" value="3"></label>
+        </div>
+        <div class="row"><span style="font-weight:700;font-size:14px">전개도 모양:</span>
+          <button class="btn sub on" data-p="0">십자</button>
+          <button class="btn sub" data-p="4">T 모양</button>
+          <button class="btn sub" data-p="6">ㄱ 모양</button>
+          <button class="btn sub" data-p="9">계단</button>
+        </div>
+        <table class="t" id="faceTable"></table>
+        <div id="m3"></div>
+      </div>
+      <div class="tip">💡 직육면체에서 <b>마주 보는 두 면은 서로 합동</b>(모양과 크기가 같음)이에요. 그래서 전개도에는 같은 크기의 직사각형이 2개씩 3쌍 있어요. 3D 화면에서 변을 눌러 보면 접었을 때 만나는 두 선분의 길이가 같다는 것도 확인할 수 있어요.</div>
+    </section>
+
+    <!-- ④ -->
+    <section id="t4" class="tab">
+      <div class="goal">🎯 직육면체의 구성 요소(면·모서리·꼭짓점)와 면 사이의 관계(평행·수직), 겨냥도를 알아봅니다.</div>
+      <div class="card">
+        <h2>직육면체의 구성 요소</h2>
+        <div class="row">
+          <button class="btn sub" id="cntFace">면 세기</button>
+          <button class="btn sub" id="cntEdge">모서리 세기</button>
+          <button class="btn sub" id="cntVert">꼭짓점 세기</button>
+        </div>
+        <div class="dims">
+          <label>가로 (cm)<input type="number" id="cX" min="1" max="6" value="4"></label>
+          <label>세로 (cm)<input type="number" id="cY" min="1" max="6" value="2"></label>
+          <label>높이 (cm)<input type="number" id="cZ" min="1" max="6" value="3"></label>
+        </div>
+      </div>
+      <div class="card">
+        <h2>평행한 면 · 수직인 면</h2>
+        <p class="hint">3D 화면에서 <b>면을 톡 누르면</b> 그 면과 평행한 면(초록)과 수직인 면(주황)이 표시돼요. 꼭짓점 이름(ㄱ~ㅇ)으로 면의 이름을 읽어 보세요.</p>
+        <div id="m4"></div>
+      </div>
+      <div class="card">
+        <h2>겨냥도</h2>
+        <p class="hint">겨냥도는 직육면체 모양을 잘 알 수 있도록 <b>보이는 모서리는 실선</b>, <b>보이지 않는 모서리는 점선</b>으로 그린 그림이에요. 켜고 나서 돌려 보면 어느 모서리가 점선이 되는지 바뀌는 걸 볼 수 있어요.</p>
+        <div class="row"><button class="btn purple" id="ghostBtn">✏️ 겨냥도 보기</button></div>
+        <div id="m4b" class="msg info" style="display:none"></div>
+      </div>
+      <div class="tip">💡 직육면체는 <b>면 6개, 모서리 12개, 꼭짓점 8개</b>예요. 한 면과 평행한 면은 1개, 수직인 면은 4개이지요. 겨냥도에서는 보통 보이는 모서리 9개는 실선, 보이지 않는 모서리 3개는 점선으로 그려요.</div>
+    </section>
+
+    <!-- ⑤ -->
+    <section id="t5" class="tab">
+      <div class="card" id="quizCard">
+        <div class="score"><span id="qNo">문제 1 / 10</span><span id="qScore">점수: 0</span></div>
+        <h2 id="qTitle" style="text-align:center;justify-content:center"></h2>
+        <div class="qcanvas" id="qcanvas"></div>
+        <div class="row" id="qOX">
+          <button class="btn ok big" id="qO">⭕ 된다</button>
+          <button class="btn bad big" id="qX">❌ 안 된다</button>
+        </div>
+        <p class="hint" id="qHint" style="display:none;text-align:center"></p>
+        <div id="qmsg"></div>
+        <div class="row" style="justify-content:center"><button class="btn" id="qNext" style="display:none">다음 문제 ▶</button></div>
+      </div>
+      <div class="card result" id="resultCard" style="display:none">
+        <h3 id="rTitle"></h3>
+        <p id="rText" class="hint"></p>
+        <table class="t" id="rTable"></table>
+        <div class="row" style="justify-content:center"><button class="btn" id="qRestart">🔄 다시 도전</button></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   0. 공통 유틸 · 전개도 트리 (순수 로직)
+   ============================================================ */
+const DIRS=[[0,1],[0,-1],[1,0],[-1,0]];
+const scl=(v,s)=>v.map(c=>c*s), key=v=>v.join(',');
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,t)=>a+(b-a)*t;
+const ease=t=>t<.5?4*t*t*t:1-Math.pow(-2*t+2,3)/2;
+// dims: {x:가로, y:세로, z:높이}  (트리 좌표계: x=가로, y=세로, z=높이)
+function dimOf(v,d){ if(v[0]) return d.x; if(v[1]) return d.y; return d.z; }
+
+function buildTree(cells, dims){
+  const set=new Set(cells.map(c=>c.join(',')));
+  if(!cells.length) return {ok:false,reason:'empty',nodes:[],dup:new Set(),D:0};
+  let root=null,best=-1;
+  for(const [r,c] of cells){ let n=0; for(const [dr,dc] of DIRS) if(set.has((r+dr)+','+(c+dc))) n++; if(n>best){best=n;root=[r,c];} }
+  const rootNode={r:root[0],c:root[1],n:[0,0,1],u:[1,0,0],v:[0,1,0],children:[],dx:0,dy:0,parent:null,depth:0};
+  const nodes=[rootNode], seen=new Set([root.join(',')]), q=[rootNode];
+  while(q.length){
+    const p=q.shift();
+    for(const [dr,dc] of DIRS){
+      const r=p.r+dr,c=p.c+dc,k=r+','+c;
+      if(!set.has(k)||seen.has(k)) continue;
+      seen.add(k);
+      const dx=dc, dy=-dr;                       // 트리 y축은 화면 위쪽(+)
+      const n=[0,1,2].map(i=>dx*p.u[i]+dy*p.v[i]);
+      const u= dx? scl(p.n,-dx): p.u;
+      const v= dy? scl(p.n,-dy): p.v;
+      const ch={r,c,n,u,v,children:[],dx,dy,parent:p,depth:p.depth+1};
+      p.children.push(ch); nodes.push(ch); q.push(ch);
+    }
+  }
+  let D=0;
+  for(const nd of nodes){ nd.w=dimOf(nd.u,dims); nd.h=dimOf(nd.v,dims); nd.axis=nd.n[0]?0:nd.n[1]?1:2; D=Math.max(D,nd.depth); }
+  // 각 면의 로컬 사각형 범위 (부모 힌지 좌표계 기준)
+  rootNode.x0=0;rootNode.x1=rootNode.w;rootNode.y0=0;rootNode.y1=rootNode.h;
+  for(const nd of nodes){ if(!nd.parent) continue; const p=nd.parent;
+    if(nd.dx===1){nd.x0=0;nd.x1=nd.w;} else if(nd.dx===-1){nd.x0=-nd.w;nd.x1=0;} else {nd.x0=p.x0;nd.x1=p.x1;}
+    if(nd.dy===1){nd.y0=0;nd.y1=nd.h;} else if(nd.dy===-1){nd.y0=-nd.h;nd.y1=0;} else {nd.y0=p.y0;nd.y1=p.y1;}
+    nd.px= nd.dx===1?p.x1: nd.dx===-1?p.x0: 0;
+    nd.py= nd.dy===1?p.y1: nd.dy===-1?p.y0: 0;
+  }
+  // 힌지(접는 선) 표시: side 0:y0변, 1:x1변, 2:y1변, 3:x0변
+  for(const nd of nodes) nd.hinge=[false,false,false,false];
+  for(const nd of nodes){ if(!nd.parent) continue; const p=nd.parent;
+    if(nd.dx===1){nd.hinge[3]=true;p.hinge[1]=true;} else if(nd.dx===-1){nd.hinge[1]=true;p.hinge[3]=true;}
+    else if(nd.dy===1){nd.hinge[0]=true;p.hinge[2]=true;} else {nd.hinge[2]=true;p.hinge[0]=true;}
+  }
+  // 겹침 검사
+  const byNormal={}, dup=new Set();
+  for(const nd of nodes){ const k=key(nd.n); (byNormal[k]=byNormal[k]||[]).push(nd); }
+  for(const k in byNormal) if(byNormal[k].length>1) byNormal[k].forEach(nd=>dup.add(nd.r+','+nd.c));
+  let ok=true,reason='';
+  if(nodes.length!==cells.length){ok=false;reason='disconnected';}
+  else if(cells.length<6){ok=false;reason='few';}
+  else if(cells.length>6){ok=false;reason='many';}
+  else if(Object.keys(byNormal).length<6){ok=false;reason='overlap';}
+  nodes.slice().sort((a,b)=>a.r-b.r||a.c-b.c).forEach((n,i)=>n.num=i+1);
+  return {root:rootNode,nodes,ok,reason,dup,D,dims};
+}
+
+const NETS=[
+ ['.#..','####','.#..'], ['.#..','####','..#.'], ['.#..','####','...#'], ['#...','####','...#'],
+ ['#...','####','#...'], ['#...','####','.#..'],
+ ['##..','.###','.#..'], ['##..','.###','..#.'], ['##..','.###','...#'],
+ ['##..','.##.','..##'], ['###..','..###']
+];
+const NET_NAMES=['1-4-1 ①','1-4-1 ②','1-4-1 ③','1-4-1 ④','1-4-1 ⑤','1-4-1 ⑥','2-3-1 ①','2-3-1 ②','2-3-1 ③','2-2-2','3-3'];
+function netCells(pat){ const cells=[]; pat.forEach((row,r)=>[...row].forEach((ch,c)=>{if(ch==='#')cells.push([r,c]);})); return cells; }
+const UNIT={x:1,y:1,z:1};
+const PASTEL=['#fca5a5','#93c5fd','#fde68a'];   // axis 0:x(좌우) 1:y(앞뒤) 2:z(위아래)
+const PASTEL_HEX=[0xfca5a5,0x93c5fd,0xfde68a];
+
+/* ============================================================
+   1. Three.js 기본 세팅
+   ============================================================ */
+const viewerEl=document.getElementById('viewer');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));
+renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputEncoding=THREE.sRGBEncoding;
+viewerEl.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(40,1,0.1,200);
+scene.add(new THREE.HemisphereLight(0xffffff,0xb0c4de,0.75));
+const sun=new THREE.DirectionalLight(0xffffff,0.9); sun.position.set(6,12,7); sun.castShadow=true;
+sun.shadow.mapSize.set(2048,2048); sun.shadow.camera.left=-10;sun.shadow.camera.right=10;sun.shadow.camera.top=10;sun.shadow.camera.bottom=-10;sun.shadow.camera.near=1;sun.shadow.camera.far=40; sun.shadow.bias=-0.0005; sun.shadow.radius=4;
+scene.add(sun);
+const fill=new THREE.DirectionalLight(0xffffff,0.3); fill.position.set(-6,4,-5); scene.add(fill);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(80,80),new THREE.ShadowMaterial({opacity:0.22}));
+floor.rotation.x=-Math.PI/2; floor.position.y=-0.005; floor.receiveShadow=true; scene.add(floor);
+const gridH=new THREE.GridHelper(40,40,0xbfd0e6,0xd6e0ef); gridH.position.y=-0.004; gridH.material.opacity=0.45; gridH.material.transparent=true; scene.add(gridH);
+
+/* ---------- 궤도 카메라 (드래그 회전 · 휠/핀치 확대 · 탭 감지) ---------- */
+class Orbit{
+  constructor(cam,dom){
+    this.cam=cam; this.dom=dom;
+    this.target=new THREE.Vector3(); this.tgtGoal=new THREE.Vector3();
+    this.theta=-0.6; this.phi=0.95; this.dist=10; this.gTheta=-0.6; this.gPhi=0.95; this.gDist=10;
+    this.auto=false; this.onClick=null;
+    const ptrs=new Map(); let pinch0=0, dist0=0, down=null;
+    dom.addEventListener('pointerdown',e=>{ dom.setPointerCapture(e.pointerId); ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(ptrs.size===1) down={x:e.clientX,y:e.clientY,t:performance.now(),moved:false};
+      if(ptrs.size===2){ const a=[...ptrs.values()]; pinch0=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); dist0=this.gDist; down=null; } });
+    dom.addEventListener('pointermove',e=>{ if(!ptrs.has(e.pointerId)) return; const prev=ptrs.get(e.pointerId);
+      if(ptrs.size===1){ const dx=e.clientX-prev.x, dy=e.clientY-prev.y; this.gTheta-=dx*0.008; this.gPhi=clamp(this.gPhi-dy*0.008,0.03,1.55);
+        if(down && Math.hypot(e.clientX-down.x,e.clientY-down.y)>8) down.moved=true; }
+      ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+      if(ptrs.size===2){ const a=[...ptrs.values()]; const d=Math.hypot(a[0].x-a[1].x,a[0].y-a[1].y); if(pinch0>0) this.gDist=clamp(dist0*pinch0/d,3,40); } });
+    const up=e=>{ ptrs.delete(e.pointerId); if(down && !down.moved && performance.now()-down.t<500 && this.onClick){ this.onClick(down.x,down.y); } down=null; };
+    dom.addEventListener('pointerup',up); dom.addEventListener('pointercancel',up);
+    dom.addEventListener('wheel',e=>{ e.preventDefault(); this.gDist=clamp(this.gDist*(1+e.deltaY*0.0012),3,40); },{passive:false});
+  }
+  goTo(theta,phi){ this.gTheta=theta; this.gPhi=phi; }
+  update(dt){
+    if(this.auto) this.gTheta+=dt*0.35;
+    const k=1-Math.exp(-dt*7);
+    this.theta=lerp(this.theta,this.gTheta,k); this.phi=lerp(this.phi,this.gPhi,k); this.dist=lerp(this.dist,this.gDist,k);
+    this.target.lerp(this.tgtGoal,k);
+    const sp=Math.sin(this.phi);
+    this.cam.position.set(this.target.x+this.dist*sp*Math.sin(this.theta), this.target.y+this.dist*Math.cos(this.phi), this.target.z+this.dist*sp*Math.cos(this.theta));
+    this.cam.lookAt(this.target);
+  }
+}
+const orbit=new Orbit(camera,viewerEl);
+const CAMS={iso:[-0.6,0.95],top:[0,0.03],front:[0,1.45],side:[Math.PI/2,1.3]};
+document.querySelectorAll('#camBar [data-cam]').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('#camBar [data-cam]').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  orbit.goTo(...CAMS[b.dataset.cam]);
+}));
+document.getElementById('autoRot').addEventListener('click',e=>{ orbit.auto=!orbit.auto; e.currentTarget.classList.toggle('on',orbit.auto); });
+
+function resize(){ const w=viewerEl.clientWidth,h=viewerEl.clientHeight; renderer.setSize(w,h,false); camera.aspect=w/h; camera.updateProjectionMatrix(); confettiC.width=w; confettiC.height=h; }
+window.addEventListener('resize',resize);
+
+/* ---------- 면 텍스처 ---------- */
+const texCache={};
+function faceTexture(o){
+  const k=JSON.stringify(o); if(texCache[k]) return texCache[k];
+  const PX=128, W=Math.max(64,Math.round(o.w*PX)), H=Math.max(64,Math.round(o.h*PX));
+  const c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle=o.bg; g.fillRect(0,0,W,H);
+  const gr=g.createLinearGradient(0,0,W,H); gr.addColorStop(0,'rgba(255,255,255,.45)'); gr.addColorStop(1,'rgba(0,0,0,.06)'); g.fillStyle=gr; g.fillRect(0,0,W,H);
+  g.lineWidth=7; g.strokeStyle='rgba(30,41,59,.8)'; g.strokeRect(3.5,3.5,W-7,H-7);
+  const m=Math.min(W,H);
+  if(o.label){ g.fillStyle=o.fg||'rgba(30,41,59,.82)'; g.font=`900 ${Math.round(m*(o.label.length>2?0.28:0.42))}px 'Noto Sans KR',sans-serif`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(o.label,W/2,H/2+(o.sub?-m*0.05:0)); }
+  if(o.sub){ g.fillStyle='rgba(30,41,59,.65)'; g.font=`700 ${Math.round(m*0.17)}px 'Noto Sans KR',sans-serif`; g.textAlign='center'; g.textBaseline='middle'; g.fillText(o.sub,W/2,H/2+m*0.28); }
+  const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding; t.anisotropy=renderer.capabilities.getMaxAnisotropy();
+  texCache[k]=t; return t;
+}
+const edgeMat=new THREE.LineBasicMaterial({color:0x1e293b});
+
+/* ============================================================
+   2. NetModel — 전개도 접기 3D 모델
+   ============================================================ */
+class NetModel{
+  constructor(tree, opts){
+    this.tree=tree; this.opts=Object.assign({sequential:true,labelMode:'num',star:null},opts||{});
+    this.group=new THREE.Group(); this.group.rotation.x=-Math.PI/2; this.group.position.y=tree.dims.z;
+    this.meshes=[]; this.highlights=[]; this.p=0;
+    this.build(tree.root,this.group);
+    this.group.updateMatrixWorld(true);
+    this.box0=new THREE.Box3().setFromObject(this.group);
+    this.setProgress(1); this.group.updateMatrixWorld(true);
+    this.box1=new THREE.Box3().setFromObject(this.group);
+    // 접힌 상태의 꼭짓점 월드 좌표 기록
+    for(const nd of tree.nodes){ nd.cw=this.corners(nd).map(c=>nd.g.localToWorld(new THREE.Vector3(c[0],c[1],0))); }
+    this.setProgress(0);
+    this.c0=this.box0.getCenter(new THREE.Vector3()); this.c1=this.box1.getCenter(new THREE.Vector3());
+    const s=this.box0.getSize(new THREE.Vector3()); this.fitDist=Math.max(7, Math.max(s.x,s.z)*1.55+2.5);
+  }
+  corners(nd){ return [[nd.x0,nd.y0],[nd.x1,nd.y0],[nd.x1,nd.y1],[nd.x0,nd.y1]]; }
+  texFor(nd){
+    const dup=this.tree.dup.has(nd.r+','+nd.c);
+    const o={w:nd.w,h:nd.h,bg:dup?'#f87171':PASTEL[nd.axis]};
+    if(this.opts.labelMode==='num') o.label=String(nd.num);
+    else if(this.opts.labelMode==='dim'){ o.label=`${nd.w}×${nd.h}`; o.sub='cm'; }
+    if(this.opts.star===nd){ o.label='★'; o.fg='#b45309'; }
+    if(nd.mark){ o.label=nd.mark==='ok'?'O':'X'; o.bg=nd.mark==='ok'?'#86efac':'#fca5a5'; o.fg=nd.mark==='ok'?'#14532d':'#7f1d1d'; }
+    return faceTexture(o);
+  }
+  build(nd,parentObj){
+    const g=new THREE.Group(); nd.g=g;
+    if(nd.parent) g.position.set(nd.px,nd.py,0);
+    const geo=new THREE.PlaneGeometry(nd.w,nd.h);
+    const mat=new THREE.MeshStandardMaterial({map:this.texFor(nd),side:THREE.DoubleSide,roughness:.6,metalness:0});
+    const mesh=new THREE.Mesh(geo,mat); mesh.position.set((nd.x0+nd.x1)/2,(nd.y0+nd.y1)/2,0);
+    mesh.castShadow=true; mesh.receiveShadow=true; mesh.userData.node=nd; nd.mesh=mesh;
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo),edgeMat));
+    g.add(mesh); parentObj.add(g); this.meshes.push(mesh);
+    nd.children.forEach(ch=>this.build(ch,g));
+  }
+  refreshTexture(nd){ nd.mesh.material.map=this.texFor(nd); nd.mesh.material.needsUpdate=true; }
+  setProgress(p){
+    this.p=p; const D=this.tree.D;
+    for(const nd of this.tree.nodes){ if(!nd.parent) continue;
+      const s=this.opts.sequential? clamp(p*D-(D-nd.depth),0,1) : p;
+      const ang=s*Math.PI/2;
+      if(nd.dx) nd.g.rotation.y=nd.dx*ang; else nd.g.rotation.x=-nd.dy*ang;
+    }
+  }
+  center(){ return new THREE.Vector3().lerpVectors(this.c0,this.c1,this.p); }
+  /* --- 변/꼭짓점 매칭 --- */
+  edgeKey(nd,side){ const a=nd.cw[side], b=nd.cw[(side+1)%4]; return [a,b]; }
+  static same(a,b){ return a.distanceTo(b)<1e-3; }
+  findMatchingEdge(nd,side){
+    const [a,b]=this.edgeKey(nd,side);
+    for(const o of this.tree.nodes) for(let s=0;s<4;s++){ if(o===nd&&s===side) continue; if(o.hinge[s]) continue;
+      const [c,d]=this.edgeKey(o,s);
+      if((NetModel.same(a,c)&&NetModel.same(b,d))||(NetModel.same(a,d)&&NetModel.same(b,c))) return {nd:o,side:s}; }
+    return null;
+  }
+  findMatchingCorners(nd,ci){
+    const p=nd.cw[ci], out=[];
+    for(const o of this.tree.nodes) for(let i=0;i<4;i++){ if(NetModel.same(o.cw[i],p)) out.push({nd:o,ci:i}); }
+    return out;
+  }
+  addEdgeHL(nd,side,color){
+    const c=this.corners(nd); const a=new THREE.Vector3(c[side][0],c[side][1],0), b=new THREE.Vector3(c[(side+1)%4][0],c[(side+1)%4][1],0);
+    const dir=new THREE.Vector3().subVectors(b,a), len=dir.length();
+    const m=new THREE.Mesh(new THREE.CylinderGeometry(0.055,0.055,len,10),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.6,roughness:.3}));
+    m.position.copy(a).add(b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize());
+    nd.g.add(m); this.highlights.push(m); return m;
+  }
+  addCornerHL(nd,ci,color){
+    const c=this.corners(nd)[ci];
+    const m=new THREE.Mesh(new THREE.SphereGeometry(0.13,18,14),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.6,roughness:.3}));
+    m.position.set(c[0],c[1],0); nd.g.add(m); this.highlights.push(m); return m;
+  }
+  clearHL(){ this.highlights.forEach(m=>{m.parent.remove(m); m.geometry.dispose(); m.material.dispose();}); this.highlights=[]; }
+  dispose(){ this.clearHL(); this.meshes.forEach(m=>{m.geometry.dispose(); m.material.dispose();}); }
+}
+const SIDE_NAME=['위쪽 변','오른쪽 변','아래쪽 변','왼쪽 변'];
+
+/* ============================================================
+   3. CubeModel — 직육면체 성질·겨냥도 모델
+   ============================================================ */
+class CubeModel{
+  constructor(d){
+    const X=d.x,Z=d.y,H=d.z; this.X=X;this.Z=Z;this.H=H;
+    this.group=new THREE.Group(); this.ghost=false; this.extras=[];
+    const V=this.V={ㄱ:[-X/2,H,-Z/2],ㄴ:[X/2,H,-Z/2],ㄷ:[X/2,H,Z/2],ㄹ:[-X/2,H,Z/2],ㅁ:[-X/2,0,-Z/2],ㅂ:[X/2,0,-Z/2],ㅅ:[X/2,0,Z/2],ㅇ:[-X/2,0,Z/2]};
+    this.faceDefs=[
+      {id:'top',name:'윗면',verts:'ㄱㄴㄷㄹ',axis:2,n:[0,1,0],pos:[0,H,0],size:[X,Z],rot:[-Math.PI/2,0,0]},
+      {id:'bottom',name:'아랫면',verts:'ㅁㅂㅅㅇ',axis:2,n:[0,-1,0],pos:[0,0,0],size:[X,Z],rot:[Math.PI/2,0,0]},
+      {id:'front',name:'앞면',verts:'ㄹㄷㅅㅇ',axis:1,n:[0,0,1],pos:[0,H/2,Z/2],size:[X,H],rot:[0,0,0]},
+      {id:'back',name:'뒷면',verts:'ㄱㄴㅂㅁ',axis:1,n:[0,0,-1],pos:[0,H/2,-Z/2],size:[X,H],rot:[0,Math.PI,0]},
+      {id:'right',name:'오른쪽 면',verts:'ㄴㄷㅅㅂ',axis:0,n:[1,0,0],pos:[X/2,H/2,0],size:[Z,H],rot:[0,Math.PI/2,0]},
+      {id:'left',name:'왼쪽 면',verts:'ㄱㄹㅇㅁ',axis:0,n:[-1,0,0],pos:[-X/2,H/2,0],size:[Z,H],rot:[0,-Math.PI/2,0]},
+    ];
+    this.meshes=[];
+    for(const f of this.faceDefs){
+      const geo=new THREE.PlaneGeometry(f.size[0],f.size[1]);
+      const mat=new THREE.MeshStandardMaterial({color:PASTEL_HEX[f.axis],side:THREE.DoubleSide,roughness:.6,transparent:true,opacity:1});
+      const m=new THREE.Mesh(geo,mat); m.position.set(...f.pos); m.rotation.set(...f.rot); m.castShadow=true; m.receiveShadow=true; m.userData.face=f; f.mesh=m; f.base=PASTEL_HEX[f.axis];
+      this.group.add(m); this.meshes.push(m);
+    }
+    this.edgeDefs=[['ㄱ','ㄴ','top','back'],['ㄴ','ㄷ','top','right'],['ㄷ','ㄹ','top','front'],['ㄹ','ㄱ','top','left'],
+      ['ㅁ','ㅂ','bottom','back'],['ㅂ','ㅅ','bottom','right'],['ㅅ','ㅇ','bottom','front'],['ㅇ','ㅁ','bottom','left'],
+      ['ㄱ','ㅁ','back','left'],['ㄴ','ㅂ','back','right'],['ㄷ','ㅅ','right','front'],['ㄹ','ㅇ','front','left']];
+    const fd=id=>this.faceDefs.find(f=>f.id===id);
+    this.edges=this.edgeDefs.map(e=>({a:new THREE.Vector3(...V[e[0]]),b:new THREE.Vector3(...V[e[1]]),na:new THREE.Vector3(...fd(e[2]).n),nb:new THREE.Vector3(...fd(e[3]).n),name:e[0]+e[1]}));
+    // 선 (실선/점선)
+    const mk=(mat)=>{ const g=new THREE.BufferGeometry(); g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(12*2*3),3)); const l=new THREE.LineSegments(g,mat); l.frustumCulled=false; return l; };
+    this.solid=mk(new THREE.LineBasicMaterial({color:0x111827}));
+    this.dashed=mk(new THREE.LineDashedMaterial({color:0x111827,dashSize:0.18,gapSize:0.12}));
+    this.group.add(this.solid,this.dashed); this.sig='';
+    // 꼭짓점 이름표
+    for(const k in V){ const s=this.labelSprite(k); const p=new THREE.Vector3(...V[k]); const out=new THREE.Vector3(Math.sign(p.x),p.y>0?1:-1,Math.sign(p.z)).normalize().multiplyScalar(.28); s.position.copy(p).add(out); this.group.add(s); }
+    this.updateEdges(new THREE.Vector3(5,5,5));
+  }
+  labelSprite(txt){
+    const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+    g.fillStyle='rgba(255,255,255,.95)'; g.beginPath(); g.arc(64,64,56,0,Math.PI*2); g.fill(); g.lineWidth=6; g.strokeStyle='#1e293b'; g.stroke();
+    g.fillStyle='#1e293b'; g.font="900 64px 'Noto Sans KR',sans-serif"; g.textAlign='center'; g.textBaseline='middle'; g.fillText(txt,64,68);
+    const t=new THREE.CanvasTexture(c); t.encoding=THREE.sRGBEncoding;
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:t,depthTest:false,transparent:true})); s.scale.set(.5,.5,1); s.renderOrder=10; return s;
+  }
+  updateEdges(camPos){
+    const vis=this.edges.map(e=>{ const mid=new THREE.Vector3().addVectors(e.a,e.b).multiplyScalar(.5); const d=new THREE.Vector3().subVectors(camPos,mid); return (e.na.dot(d)>0||e.nb.dot(d)>0); });
+    const sig=vis.map(v=>v?1:0).join('');
+    if(sig===this.sig) return; this.sig=sig;
+    const fillLine=(line,list)=>{ const pos=line.geometry.attributes.position; let i=0; for(const e of list){ pos.setXYZ(i++,e.a.x,e.a.y,e.a.z); pos.setXYZ(i++,e.b.x,e.b.y,e.b.z); } pos.needsUpdate=true; line.geometry.setDrawRange(0,i); line.computeLineDistances(); };
+    fillLine(this.solid,this.edges.filter((e,i)=>vis[i]));
+    fillLine(this.dashed,this.ghost?this.edges.filter((e,i)=>!vis[i]):[]);
+    this.hiddenCount=vis.filter(v=>!v).length;
+  }
+  setGhost(on){ this.ghost=on; this.meshes.forEach(m=>{m.material.opacity=on?0.10:1; m.castShadow=!on;}); this.sig=''; }
+  highlightFace(sel){
+    for(const f of this.faceDefs){ let col=f.base;
+      if(sel){ if(f===sel) col=0x3b82f6; else if(f.axis===sel.axis) col=0x22c55e; else col=0xfb923c; }
+      f.mesh.material.color.setHex(col); }
+  }
+  clearExtras(){ this.extras.forEach(m=>{this.group.remove(m); m.geometry&&m.geometry.dispose();}); this.extras=[]; }
+  addVertexBall(k,color){ const m=new THREE.Mesh(new THREE.SphereGeometry(.14,18,14),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.5})); m.position.set(...this.V[k]); this.group.add(m); this.extras.push(m); return m; }
+  addEdgeBar(e,color){ const dir=new THREE.Vector3().subVectors(e.b,e.a), len=dir.length(); const m=new THREE.Mesh(new THREE.CylinderGeometry(.06,.06,len,10),new THREE.MeshStandardMaterial({color,emissive:color,emissiveIntensity:.5})); m.position.copy(e.a).add(e.b).multiplyScalar(.5); m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),dir.normalize()); this.group.add(m); this.extras.push(m); return m; }
+  dispose(){ this.clearExtras(); this.group.traverse(o=>{ if(o.geometry) o.geometry.dispose(); if(o.material){ if(o.material.map) o.material.map.dispose(); o.material.dispose(); } }); }
+}
+
+/* ============================================================
+   4. 앱 상태 · 렌더 루프
+   ============================================================ */
+let model=null, cube=null, clickMode=null, foldAnim=null, tab='t1';
+const timers=[]; function later(fn,ms){ const id=setTimeout(fn,ms); timers.push(id); return id; } function clearTimers(){ timers.forEach(clearTimeout); timers.length=0; }
+const hud=document.getElementById('hud'); const setHud=t=>hud.innerHTML=t||'';
+const foldSlider=document.getElementById('fold'); const foldBar=document.getElementById('foldBar');
+const raycaster=new THREE.Raycaster();
+
+function setModel(tree,opts){
+  if(model){ scene.remove(model.group); model.dispose(); model=null; }
+  if(cube){ scene.remove(cube.group); cube.dispose(); cube=null; }
+  foldAnim=null; foldSlider.value=0;
+  if(!tree||!tree.nodes.length) return;
+  model=new NetModel(tree,Object.assign({sequential:seqOn},opts||{}));
+  scene.add(model.group); orbit.gDist=model.fitDist; orbit.tgtGoal.copy(model.center());
+  const s=model.box0.getSize(new THREE.Vector3()); fitShadow(Math.max(s.x,s.z,tree.dims.z)*0.75+3);
+}
+function fitShadow(r){ const c=sun.shadow.camera; c.left=-r;c.right=r;c.top=r;c.bottom=-r; c.updateProjectionMatrix(); }
+function setCube(d){
+  if(model){ scene.remove(model.group); model.dispose(); model=null; }
+  if(cube){ scene.remove(cube.group); cube.dispose(); cube=null; }
+  cube=new CubeModel(d); scene.add(cube.group); orbit.gDist=Math.max(7,Math.max(d.x,d.y,d.z)*2.2+3); orbit.tgtGoal.set(0,d.z/2,0); fitShadow(Math.max(d.x,d.y,d.z)+3);
+}
+function foldTo(to,dur,cb){ if(!model) return; foldAnim={from:model.p,to,t0:performance.now(),dur:dur||(Math.abs(to-model.p)*2600+300),cb}; }
+let seqOn=true;
+document.getElementById('seqBtn').addEventListener('click',e=>{ seqOn=!seqOn; e.currentTarget.classList.toggle('on',seqOn); if(model){ model.opts.sequential=seqOn; model.setProgress(model.p);} });
+document.getElementById('foldPlay').addEventListener('click',()=>foldTo(1));
+document.getElementById('foldBack').addEventListener('click',()=>foldTo(0));
+foldSlider.addEventListener('input',()=>{ foldAnim=null; if(model) model.setProgress(foldSlider.value/100); });
+
+let last=performance.now(), tick=0;
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min(0.05,(now-last)/1000); last=now; tick+=dt;
+  if(foldAnim && model){ const t=clamp((now-foldAnim.t0)/foldAnim.dur,0,1); const p=lerp(foldAnim.from,foldAnim.to,ease(t)); model.setProgress(p); foldSlider.value=Math.round(p*100); if(t>=1){ const cb=foldAnim.cb; foldAnim=null; cb&&cb(); } }
+  if(model){ orbit.tgtGoal.copy(model.center()); const e=.45+.45*Math.sin(tick*5); model.highlights.forEach(m=>m.material.emissiveIntensity=e); }
+  if(cube){ cube.updateEdges(camera.position); const e=.3+.4*Math.sin(tick*5); cube.extras.forEach(m=>m.material.emissiveIntensity=e); if(cube.ghost) setHud(`겨냥도 · 실선(보이는 모서리) <b>${12-cube.hiddenCount}개</b> · 점선(보이지 않는 모서리) <b>${cube.hiddenCount}개</b>`); }
+  orbit.update(dt);
+  renderer.render(scene,camera);
+  drawConfetti(dt);
+}
+
+/* ---------- 클릭(탭) 처리 ---------- */
+orbit.onClick=(cx,cy)=>{
+  const r=renderer.domElement.getBoundingClientRect();
+  const ndc=new THREE.Vector2(((cx-r.left)/r.width)*2-1, -((cy-r.top)/r.height)*2+1);
+  raycaster.setFromCamera(ndc,camera);
+  if(clickMode==='match' && model){
+    const hit=raycaster.intersectObjects(model.meshes,false)[0]; if(!hit) return;
+    const nd=hit.object.userData.node; const lp=nd.g.worldToLocal(hit.point.clone());
+    const d=[Math.abs(lp.y-nd.y0),Math.abs(nd.x1-lp.x),Math.abs(nd.y1-lp.y),Math.abs(lp.x-nd.x0)];
+    const tc=0.26*Math.min(nd.w,nd.h);
+    const near=d.map(v=>v<tc);
+    const m1=document.getElementById(tab==='t1'?'m1':tab==='t2'?'m2':'m3');
+    model.clearHL();
+    if((near[0]&&near[1])||(near[1]&&near[2])||(near[2]&&near[3])||(near[3]&&near[0])){
+      const ci= near[0]&&near[1]?1: near[1]&&near[2]?2: near[2]&&near[3]?3:0;
+      const list=model.findMatchingCorners(nd,ci);
+      list.forEach(o=>model.addCornerHL(o.nd,o.ci,0xef4444));
+      m1.innerHTML=`<div class="msg ok">📍 이 점은 접었을 때 <b>${list.length}개의 점</b>이 모여 한 꼭짓점이 돼요.<br><span class="n">${list.map(o=>`면 ${o.nd.num}`).join(', ')}의 모서리가 한 점에서 만나요. 접히는 모습을 보세요!</span></div>`;
+      foldTo(1);
+    } else {
+      let side=0; for(let i=1;i<4;i++) if(d[i]<d[side]) side=i;
+      if(nd.hinge[side]){ m1.innerHTML=`<div class="msg info">✂️ 면 ${nd.num}의 ${SIDE_NAME[side]}은 <b>접는 선</b>이에요. 접은 뒤에도 두 면이 그대로 붙어 있어요.</div>`; model.addEdgeHL(nd,side,0x6366f1); return; }
+      const mt=model.findMatchingEdge(nd,side);
+      model.addEdgeHL(nd,side,0xef4444);
+      if(mt){ model.addEdgeHL(mt.nd,mt.side,0xef4444);
+        const len=(side%2===0)? nd.w : nd.h;
+        m1.innerHTML=`<div class="msg ok">🔗 <b>면 ${nd.num}의 ${SIDE_NAME[side]}</b>은 접었을 때 <b>면 ${mt.nd.num}의 ${SIDE_NAME[mt.side]}</b>과 만나요.<br><span class="n">두 선분의 길이는 ${len}cm로 같아요. 길이가 같아야 꼭 맞게 붙지요!</span></div>`;
+        foldTo(1);
+      } else m1.innerHTML=`<div class="msg bad">이 변과 만나는 변을 찾을 수 없어요. (정육면체가 되지 않는 전개도예요)</div>`;
+    }
+  }
+  else if(clickMode==='quizB' && model && qCur && !qCur.answered){
+    const hit=raycaster.intersectObjects(model.meshes,false)[0]; if(!hit) return;
+    const nd=hit.object.userData.node; if(nd===qCur.star) { setHud('★ 면이 아니라 <b>다른 면</b>을 골라요!'); return; }
+    answerB(nd);
+  }
+  else if(clickMode==='cube' && cube){
+    const hit=raycaster.intersectObjects(cube.meshes,false)[0];
+    if(!hit){ cube.highlightFace(null); document.getElementById('m4').innerHTML=''; return; }
+    const f=hit.object.userData.face; cube.highlightFace(f); cube.clearExtras(); clearTimers();
+    const par=cube.faceDefs.find(x=>x!==f&&x.axis===f.axis); const perp=cube.faceDefs.filter(x=>x.axis!==f.axis);
+    document.getElementById('m4').innerHTML=`<div class="msg info">선택한 면: <b style="color:#2563eb">면 ${f.verts}</b> (${f.name})<br>
+      <span style="color:#15803d">■ 평행한 면 (1개):</span> 면 ${par.verts} (${par.name})<br>
+      <span style="color:#c2410c">■ 수직인 면 (4개):</span> ${perp.map(x=>`면 ${x.verts}`).join(', ')}<br>
+      <span class="n">평행한 면은 아무리 늘려도 만나지 않고, 수직인 면은 선택한 면과 직각으로 만나요.</span></div>`;
+    setHud(`<span style="color:#2563eb">■ 선택</span> <span style="color:#15803d">■ 평행</span> <span style="color:#c2410c">■ 수직</span>`);
+  }
+};
+
+/* ============================================================
+   5. 탭 ① 접어 보기
+   ============================================================ */
+let curNet=0;
+const picker=document.getElementById('netPicker');
+NETS.forEach((pat,i)=>{
+  const b=document.createElement('button'); b.className='netbtn'+(i===0?' on':'');
+  const m=document.createElement('div'); m.className='mini'; m.style.gridTemplateColumns=`repeat(${pat[0].length},11px)`;
+  pat.forEach(row=>[...row].forEach(ch=>{const s=document.createElement('i'); if(ch==='#')s.className='f'; m.appendChild(s);}));
+  b.appendChild(m); b.appendChild(document.createTextNode(NET_NAMES[i]));
+  b.addEventListener('click',()=>{ curNet=i; document.querySelectorAll('.netbtn').forEach(x=>x.classList.remove('on')); b.classList.add('on'); loadTab1(); });
+  picker.appendChild(b);
+});
+function loadTab1(){ setModel(buildTree(netCells(NETS[curNet]),UNIT),{labelMode:'num'}); clickMode='match'; document.getElementById('m1').innerHTML=''; setHud('변이나 모서리를 톡 눌러 보세요 👆'); }
+document.getElementById('clearHL').addEventListener('click',()=>{ if(model) model.clearHL(); document.getElementById('m1').innerHTML=''; });
+
+/* ============================================================
+   6. 탭 ② 직접 만들기
+   ============================================================ */
+const grid=document.getElementById('grid'); const filled=new Set();
+for(let r=0;r<5;r++)for(let c=0;c<6;c++){ const d=document.createElement('div'); d.className='cell'; d.dataset.k=r+','+c;
+  d.addEventListener('click',()=>{ const k=d.dataset.k; if(filled.has(k)){filled.delete(k);d.classList.remove('f');} else {filled.add(k);d.classList.add('f');} grid.querySelectorAll('.dup').forEach(x=>x.classList.remove('dup')); updateCnt(); document.getElementById('m2').innerHTML=''; previewBuild(); });
+  grid.appendChild(d); }
+function updateCnt(){ const el=document.getElementById('cnt'); el.textContent=`칠한 칸: ${filled.size} / 6`; el.style.color=filled.size===6?'var(--ok)':filled.size>6?'var(--bad)':'var(--ink)'; }
+function gridCells(){ return [...filled].map(k=>k.split(',').map(Number)); }
+function previewBuild(){ const t=buildTree(gridCells(),UNIT); setModel(t.nodes.length?t:null,{labelMode:'num'}); clickMode=null; setHud(filled.size?'「접어 보기」를 누르면 접혀요':'칸을 칠해 보세요'); }
+document.getElementById('clearBtn').addEventListener('click',()=>{ filled.clear(); grid.querySelectorAll('.cell').forEach(d=>d.className='cell'); updateCnt(); document.getElementById('m2').innerHTML=''; previewBuild(); });
+document.getElementById('randBtn').addEventListener('click',()=>{ filled.clear(); grid.querySelectorAll('.cell').forEach(d=>d.className='cell'); randomHexomino(6).forEach(([r,c])=>{filled.add(r+','+c); grid.querySelector(`[data-k="${r},${c}"]`).classList.add('f');}); updateCnt(); document.getElementById('m2').innerHTML=''; previewBuild(); });
+document.getElementById('foldBtn').addEventListener('click',()=>{
+  grid.querySelectorAll('.dup').forEach(x=>x.classList.remove('dup'));
+  const t=buildTree(gridCells(),UNIT); const m=document.getElementById('m2');
+  const msgs={empty:'칸을 먼저 칠해 주세요.',few:`칸이 ${filled.size}개예요. 정육면체는 면이 <b>6개</b>이므로 6칸이 필요해요.`,many:`칸이 ${filled.size}개예요. 면이 6개를 넘으면 안 돼요. ${filled.size-6}칸을 지워 보세요.`,disconnected:'칸들이 서로 떨어져 있어요. 모든 칸이 <b>변끼리 붙어</b> 있어야 접을 수 있어요.',overlap:'❌ 접으면 면이 <b>겹쳐요!</b> 빨간 면이 같은 자리로 접히는 면이에요. 빨간 칸 하나를 다른 곳으로 옮겨 보세요.'};
+  if(t.ok){ m.innerHTML='<div class="msg ok">⭕ 성공! 이 전개도를 접으면 정육면체가 돼요. 3D 화면에서 변을 눌러 만나는 선분도 찾아보세요.</div>'; burst(); }
+  else { m.innerHTML=`<div class="msg bad">${msgs[t.reason]}</div>`; t.dup.forEach(k=>grid.querySelector(`[data-k="${k}"]`).classList.add('dup')); }
+  if(t.nodes.length){ setModel(t,{labelMode:'num'}); clickMode=t.ok?'match':null; setHud(t.ok?'⭕ 정육면체 완성! 변을 눌러 보세요':'❌ 빨간 면이 겹쳐요'); later(()=>foldTo(1),200); }
+});
+document.getElementById('hintBtn').addEventListener('click',()=>{
+  const hints=['한 줄에 4칸을 나란히 칠하고, 위와 아래에 1칸씩 붙여 보세요. (1-4-1 모양)','같은 줄에 5칸 이상 있으면 절대 정육면체가 안 돼요. 접어서 왜 그런지 확인해 보세요!','ㄷ자나 2×2 네모가 들어 있으면 접었을 때 면이 겹쳐요.','정육면체 전개도는 모두 11가지뿐이에요. ① 탭에서 모양을 참고해 보세요.','마주 보는 면은 전개도에서 한 칸 건너 있어요. 같은 색끼리 붙어 있으면 안 돼요.'];
+  document.getElementById('m2').innerHTML=`<div class="msg info">💡 ${hints[Math.floor(Math.random()*hints.length)]}</div>`;
+});
+function randomHexomino(cols){ cols=cols||5; const cells=[[2,Math.floor(cols/2)]]; const set=new Set([cells[0].join(',')]);
+  while(cells.length<6){ const [r,c]=cells[Math.floor(Math.random()*cells.length)]; const [dr,dc]=DIRS[Math.floor(Math.random()*4)]; const nr=r+dr,nc=c+dc; if(nr<0||nr>4||nc<0||nc>=cols||set.has(nr+','+nc)) continue; set.add(nr+','+nc); cells.push([nr,nc]); }
+  return cells; }
+
+/* ============================================================
+   7. 탭 ③ 직육면체 전개도
+   ============================================================ */
+let cubPat=0;
+function readDims(ids){ const g=id=>clamp(parseInt(document.getElementById(id).value)||1,1,6); return {x:g(ids[0]),y:g(ids[1]),z:g(ids[2])}; }
+function loadTab3(){
+  const d=readDims(['dX','dY','dZ']); const t=buildTree(netCells(NETS[cubPat]),d);
+  setModel(t,{labelMode:'dim'}); clickMode='match'; setHud('변을 눌러 만나는 선분을 찾아보세요 👆');
+  const rows=[[d.x,d.y,'윗면·아랫면',2],[d.x,d.z,'앞면·뒷면',1],[d.y,d.z,'왼쪽·오른쪽 면',0]];
+  document.getElementById('faceTable').innerHTML='<tr><th>마주 보는 면</th><th>크기</th><th>개수</th></tr>'+rows.map(r=>`<tr><td><i class="sw" style="background:${PASTEL[r[3]]}"></i>${r[2]}</td><td><b>${r[0]}×${r[1]}</b> cm</td><td>2개</td></tr>`).join('');
+  document.getElementById('m3').innerHTML=`<div class="msg info">가로 ${d.x}cm, 세로 ${d.y}cm, 높이 ${d.z}cm인 직육면체예요.<br><span class="n">같은 색 면 2개가 마주 보는 면이고, 모양과 크기가 똑같아요. 모서리 길이는 ${d.x}cm, ${d.y}cm, ${d.z}cm가 각각 4개씩, 모두 12개예요.</span></div>`;
+}
+['dX','dY','dZ'].forEach(id=>document.getElementById(id).addEventListener('change',loadTab3));
+document.querySelectorAll('#t3 [data-p]').forEach(b=>b.addEventListener('click',()=>{ document.querySelectorAll('#t3 [data-p]').forEach(x=>x.classList.remove('on')); b.classList.add('on'); cubPat=+b.dataset.p; loadTab3(); }));
+
+/* ============================================================
+   8. 탭 ④ 성질·겨냥도
+   ============================================================ */
+let ghostOn=false;
+function loadTab4(){ const d=readDims(['cX','cY','cZ']); setCube(d); cube.setGhost(ghostOn); clickMode='cube'; document.getElementById('m4').innerHTML=''; setHud(ghostOn?'':'면을 톡 눌러 보세요 👆'); updateGhostUI(); }
+['cX','cY','cZ'].forEach(id=>document.getElementById(id).addEventListener('change',loadTab4));
+function updateGhostUI(){ const b=document.getElementById('ghostBtn'); b.textContent=ghostOn?'📦 다시 입체로 보기':'✏️ 겨냥도 보기'; const mb=document.getElementById('m4b'); mb.style.display=ghostOn?'block':'none'; mb.innerHTML='화면을 천천히 돌려 보세요. 카메라 위치에 따라 어떤 모서리가 <b>실선 → 점선</b>으로 바뀌는지 관찰해요. 보통 한 번에 보이는 면은 3개, 보이는 모서리는 9개예요.'; }
+document.getElementById('ghostBtn').addEventListener('click',()=>{ ghostOn=!ghostOn; if(cube){ cube.setGhost(ghostOn); cube.highlightFace(null); cube.clearExtras(); } document.getElementById('m4').innerHTML=''; if(!ghostOn) setHud('면을 톡 눌러 보세요 👆'); updateGhostUI(); });
+function countAnim(kind){
+  if(!cube) return; clearTimers(); cube.clearExtras(); cube.highlightFace(null);
+  const names={face:'면',edge:'모서리',vert:'꼭짓점'}; const total={face:6,edge:12,vert:8}[kind];
+  let i=0; const step=()=>{ i++;
+    if(kind==='vert'){ const k=Object.keys(cube.V)[i-1]; cube.addVertexBall(k,0xef4444); }
+    else if(kind==='edge'){ cube.addEdgeBar(cube.edges[i-1],0x2563eb); }
+    else { const f=cube.faceDefs[i-1]; f.mesh.material.color.setHex(0xfacc15); later(()=>f.mesh.material.color.setHex(f.base),900); }
+    setHud(`${names[kind]} <b style="font-size:18px">${i}</b>개${i===total?' — 모두 세었어요! 🎉':''}`);
+    if(i<total) later(step,420); else document.getElementById('m4').innerHTML=`<div class="msg ok">직육면체의 ${names[kind]}은 모두 <b>${total}개</b>예요.${kind==='edge'?'<br><span class="n">길이가 같은 모서리가 4개씩 3종류 있어요.</span>':kind==='vert'?'<br><span class="n">한 꼭짓점에는 모서리 3개와 면 3개가 모여요.</span>':'<br><span class="n">모두 직사각형이고, 마주 보는 면끼리 3쌍이에요.</span>'}</div>`; };
+  step();
+}
+document.getElementById('cntFace').addEventListener('click',()=>countAnim('face'));
+document.getElementById('cntEdge').addEventListener('click',()=>countAnim('edge'));
+document.getElementById('cntVert').addEventListener('click',()=>countAnim('vert'));
+
+/* ============================================================
+   9. 탭 ⑤ 퀴즈
+   ============================================================ */
+let qIdx=0,qScore=0,qCur=null,qLog=[];
+function makeQuestion(){
+  const type= (qIdx%3===2)?'B':'A';
+  if(type==='A'){ const wantValid=Math.random()<0.5; let cells,t;
+    for(let i=0;i<600;i++){ cells=randomHexomino(5); t=buildTree(cells,UNIT); if(t.ok===wantValid) break; }
+    if(t.ok!==wantValid&&wantValid){ cells=netCells(NETS[Math.floor(Math.random()*11)]); t=buildTree(cells,UNIT); }
+    return {type,cells,t,answer:t.ok,answered:false}; }
+  const cells=netCells(NETS[Math.floor(Math.random()*11)]); const t=buildTree(cells,UNIT); const star=t.nodes[Math.floor(Math.random()*6)];
+  return {type,cells,t,star,answered:false};
+}
+function drawQ(cells,star){
+  let minr=9,minc=9,maxr=-1,maxc=-1; cells.forEach(([r,c])=>{minr=Math.min(minr,r);minc=Math.min(minc,c);maxr=Math.max(maxr,r);maxc=Math.max(maxc,c);});
+  const set=new Set(cells.map(c=>c.join(',')));
+  const g=document.createElement('div'); g.className='qgrid'; g.style.gridTemplateColumns=`repeat(${maxc-minc+1},38px)`;
+  for(let r=minr;r<=maxr;r++)for(let c=minc;c<=maxc;c++){ const i=document.createElement('i'); if(set.has(r+','+c)){ i.className='f'; if(star&&star.r===r&&star.c===c){ i.style.background='#fde68a'; i.textContent='★'; i.style.cssText+='display:flex;align-items:center;justify-content:center;font-style:normal;font-weight:900;color:#b45309;'; } } g.appendChild(i); }
+  const box=document.getElementById('qcanvas'); box.innerHTML=''; box.appendChild(g);
+}
+function showQ(){
+  qCur=makeQuestion();
+  document.getElementById('qNo').textContent=`문제 ${qIdx+1} / 10`; document.getElementById('qScore').textContent=`점수: ${qScore}`;
+  document.getElementById('qmsg').innerHTML=''; document.getElementById('qNext').style.display='none';
+  if(qCur.type==='A'){
+    document.getElementById('qTitle').textContent='이 전개도를 접으면 정육면체가 될까요?'; drawQ(qCur.cells);
+    document.getElementById('qOX').style.display='flex'; document.getElementById('qHint').style.display='none';
+    document.getElementById('qO').disabled=false; document.getElementById('qX').disabled=false;
+    setModel(qCur.t,{labelMode:'num'}); clickMode=null; setHud('머릿속으로 접어 보고 답을 골라요 🤔'); orbit.goTo(...CAMS.top);
+  } else {
+    document.getElementById('qTitle').textContent='★ 면과 마주 보는 면은 어느 것일까요?'; drawQ(qCur.cells,qCur.star);
+    document.getElementById('qOX').style.display='none'; const h=document.getElementById('qHint'); h.style.display='block'; h.innerHTML='👆 <b>3D 화면</b>에서 정답이라고 생각하는 면을 톡 누르세요.';
+    setModel(qCur.t,{labelMode:'num',star:qCur.star}); clickMode='quizB'; setHud('★와 마주 보는 면을 눌러요 👆'); orbit.goTo(...CAMS.top);
+  }
+}
+function answerA(a){
+  if(qCur.answered) return; qCur.answered=true;
+  const correct=a===qCur.answer; if(correct) qScore++; qLog.push(correct);
+  document.getElementById('qO').disabled=true; document.getElementById('qX').disabled=true; document.getElementById('qScore').textContent=`점수: ${qScore}`;
+  const why=qCur.answer?'6개 면이 모두 제자리를 찾아 정육면체가 돼요.':(qCur.t.reason==='overlap'?'접으면 빨간 면끼리 <b>겹쳐서</b> 정육면체가 안 돼요.':'정육면체가 안 돼요.');
+  document.getElementById('qmsg').innerHTML=`<div class="msg ${correct?'ok':'bad'}">${correct?'🎉 정답!':'😅 아쉬워요!'} 정답은 「${qCur.answer?'된다':'안 된다'}」예요. ${why}<br><span class="n">3D 화면에서 접히는 모습을 확인해 보세요.</span></div>`;
+  if(correct) burst(); orbit.goTo(...CAMS.iso); setHud(correct?'🎉 정답!':'😅 다시 생각해 봐요'); later(()=>foldTo(1),300);
+  document.getElementById('qNext').style.display='inline-block';
+}
+function answerB(nd){
+  qCur.answered=true; const correct=(nd.axis===qCur.star.axis); if(correct) qScore++; qLog.push(correct);
+  document.getElementById('qScore').textContent=`점수: ${qScore}`;
+  const ans=qCur.t.nodes.find(n=>n!==qCur.star&&n.axis===qCur.star.axis);
+  nd.mark=correct?'ok':'bad'; model.refreshTexture(nd);
+  if(!correct){ ans.mark='ok'; model.refreshTexture(ans); }
+  document.getElementById('qmsg').innerHTML=`<div class="msg ${correct?'ok':'bad'}">${correct?'🎉 정답!':'😅 아쉬워요!'} ★와 마주 보는 면은 <b>면 ${ans.num}</b>이에요.<br><span class="n">마주 보는 면은 전개도에서 한 칸 건너 있거나, 꺾인 자리에 있어요. 접히는 모습으로 확인!</span></div>`;
+  if(correct) burst(); orbit.goTo(...CAMS.iso); setHud(correct?'🎉 정답!':'😅 O표시가 정답이에요'); later(()=>foldTo(1),300); clickMode=null;
+  document.getElementById('qNext').style.display='inline-block';
+}
+document.getElementById('qO').addEventListener('click',()=>answerA(true));
+document.getElementById('qX').addEventListener('click',()=>answerA(false));
+document.getElementById('qNext').addEventListener('click',()=>{ qIdx++; if(qIdx>=10) finish(); else showQ(); });
+function finish(){
+  document.getElementById('quizCard').style.display='none'; const rc=document.getElementById('resultCard'); rc.style.display='block';
+  const stars=qScore>=9?'⭐⭐⭐':qScore>=6?'⭐⭐':'⭐';
+  document.getElementById('rTitle').textContent=`${stars} ${qScore} / 10 점`;
+  document.getElementById('rText').innerHTML=qScore>=9?'전개도 박사! 정육면체의 전개도를 완벽하게 이해했어요.':qScore>=6?'잘했어요! ① 탭에서 11가지 전개도를 한 번 더 살펴보면 만점도 문제없어요.':'괜찮아요! ② 탭에서 직접 전개도를 만들어 보며 겹치는 면을 찾아보면 금방 익숙해질 거예요.';
+  document.getElementById('rTable').innerHTML='<tr><th>문제</th>'+qLog.map((_,i)=>`<td>${i+1}</td>`).join('')+'</tr><tr><th>결과</th>'+qLog.map(l=>`<td>${l?'⭕':'❌'}</td>`).join('')+'</tr>';
+  if(qScore>=9) burst(true);
+}
+document.getElementById('qRestart').addEventListener('click',()=>{ qIdx=0;qScore=0;qLog=[]; document.getElementById('resultCard').style.display='none'; document.getElementById('quizCard').style.display='block'; showQ(); });
+
+/* ============================================================
+   10. 탭 전환 · 폭죽 · 시작
+   ============================================================ */
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>{
+  document.querySelectorAll('nav button').forEach(x=>x.classList.remove('on')); b.classList.add('on');
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on')); document.getElementById(b.dataset.tab).classList.add('on');
+  tab=b.dataset.tab; clearTimers(); foldBar.classList.toggle('hidden',tab==='t4'); setHud('');
+  document.querySelectorAll('#camBar [data-cam]').forEach(x=>x.classList.toggle('on',x.dataset.cam==='iso')); orbit.goTo(...CAMS.iso);
+  if(tab==='t1') loadTab1(); else if(tab==='t2') previewBuild(); else if(tab==='t3') loadTab3(); else if(tab==='t4') loadTab4(); else if(tab==='t5'){ if(!qCur||document.getElementById('resultCard').style.display==='block'){ qIdx=0;qScore=0;qLog=[]; document.getElementById('resultCard').style.display='none'; document.getElementById('quizCard').style.display='block'; } showQ(); }
+}));
+
+const confettiC=document.getElementById('confetti'); const cctx=confettiC.getContext('2d'); let parts=[];
+function burst(big){ const W=confettiC.width,H=confettiC.height; const n=big?160:80; for(let i=0;i<n;i++) parts.push({x:W/2,y:H*0.35,vx:(Math.random()-0.5)*(big?900:600),vy:-Math.random()*600-200,c:['#f87171','#60a5fa','#fbbf24','#34d399','#a78bfa'][i%5],r:4+Math.random()*4,rot:Math.random()*6,vr:(Math.random()-.5)*10,life:1.6+Math.random()*.6}); }
+function drawConfetti(dt){ if(!parts.length){ return; } cctx.clearRect(0,0,confettiC.width,confettiC.height);
+  parts=parts.filter(p=>p.life>0); for(const p of parts){ p.life-=dt; p.vy+=1400*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.rot+=p.vr*dt; cctx.save(); cctx.translate(p.x,p.y); cctx.rotate(p.rot); cctx.globalAlpha=clamp(p.life,0,1); cctx.fillStyle=p.c; cctx.fillRect(-p.r,-p.r/2,p.r*2,p.r); cctx.restore(); }
+  if(!parts.length) cctx.clearRect(0,0,confettiC.width,confettiC.height); }
+
+function start(){ resize(); loadTab1(); requestAnimationFrame(loop); }
+if(document.fonts&&document.fonts.load){ Promise.all([document.fonts.load("900 20px 'Noto Sans KR'"),document.fonts.load("700 20px 'Noto Sans KR'")]).then(start,start); } else start();
+</script>
+</body>
+</html>
